@@ -1,8 +1,9 @@
 """
 NCD Tracker - Data Store
-Replaces excel_manager.py.
-Reads/writes Bond_Primary_Deals.xlsx using ACTUAL column names
-(Issuer, Quantum (Cr.), Tentative Issuance Date, Listed/Unlisted, Type, …).
+Supports two backends:
+  DataStore       → local Excel (Bond_Primary_Deals.xlsx)
+  GSheetDataStore → Google Sheets via service_account.json
+  get_data_store()→ factory; picks backend from st.session_state
 """
 
 import pandas as pd
@@ -377,3 +378,243 @@ class DataStore:
             return {p: PhaseChecklist.from_dict(cd) for p, cd in data.items()}
         except Exception:
             return {}
+
+
+# ══════════════════════════════════════════════════════════
+#  GOOGLE SHEETS BACKEND
+# ══════════════════════════════════════════════════════════
+
+class GSheetDataStore(DataStore):
+    """
+    Same interface as DataStore but reads/writes Google Sheets.
+    Inherits all parsing methods (_row_to_pipeline, _row_to_closed, etc.)
+    and overrides only the I/O methods.
+
+    Requirements: pip install gspread google-auth
+    Credentials:  place service_account.json in Code_Streamlit/
+    """
+
+    def __init__(self):
+        # DO NOT call super().__init__() — we skip file I/O setup
+        self.file_path = config.DATA_FILE   # kept for compatibility; not used for I/O
+        self._setup_gsheets()
+
+    # ── setup ──────────────────────────────────────
+    def _setup_gsheets(self):
+        try:
+            import gspread  # noqa: F401
+        except ImportError:
+            raise ImportError(
+                "Google Sheets packages missing. Run:\n"
+                "  pip install gspread google-auth"
+            )
+
+        if not config.GOOGLE_CREDS_FILE.exists():
+            raise FileNotFoundError(
+                f"service_account.json not found at:\n  {config.GOOGLE_CREDS_FILE}\n"
+                "Place the Google service-account JSON file there and try again."
+            )
+
+        import gspread
+        self.gc = gspread.service_account(filename=str(config.GOOGLE_CREDS_FILE))
+        self.ss = self._open_or_create_spreadsheet()
+
+    def _open_or_create_spreadsheet(self):
+        import gspread
+        try:
+            ss = self.gc.open(config.GOOGLE_SHEET_NAME)
+        except gspread.SpreadsheetNotFound:
+            ss = self.gc.create(config.GOOGLE_SHEET_NAME)
+            # Rename default Sheet1 → Pipeline sheet
+            ws1 = ss.get_worksheet(0)
+            ws1.update_title(config.SHEET_PIPELINE)
+            ws1.append_row(PIPELINE_HEADERS)
+            # Create Closed sheet
+            ws2 = ss.add_worksheet(
+                title=config.SHEET_CLOSED,
+                rows=500, cols=len(CLOSED_HEADERS) + 5
+            )
+            ws2.append_row(CLOSED_HEADERS)
+            print(f"[GSheetDataStore] Created new spreadsheet: {ss.url}")
+        return ss
+
+    def _ws(self, name):
+        """Return worksheet by name; create it with headers if missing."""
+        import gspread
+        try:
+            return self.ss.worksheet(name)
+        except gspread.WorksheetNotFound:
+            headers = PIPELINE_HEADERS if name == config.SHEET_PIPELINE else CLOSED_HEADERS
+            ws = self.ss.add_worksheet(title=name, rows=500, cols=len(headers) + 5)
+            ws.append_row(headers)
+            return ws
+
+    @property
+    def spreadsheet_url(self):
+        return f"https://docs.google.com/spreadsheets/d/{self.ss.id}"
+
+    # ── READ ───────────────────────────────────────
+    def load_pipeline_deals(self):
+        ws = self._ws(config.SHEET_PIPELINE)
+        records = ws.get_all_records(
+            expected_headers=[],
+            value_render_option='FORMATTED_VALUE'
+        )
+        deals = []
+        for rec in records:
+            try:
+                row = pd.Series(rec)
+                deal = self._row_to_pipeline(row)   # inherited from DataStore
+                if deal:
+                    deals.append(deal)
+            except Exception as e:
+                print(f"[GSheetDataStore] skip pipeline row: {e}")
+        return deals
+
+    def load_closed_deals(self):
+        ws = self._ws(config.SHEET_CLOSED)
+        records = ws.get_all_records(
+            expected_headers=[],
+            value_render_option='FORMATTED_VALUE'
+        )
+        deals = []
+        for rec in records:
+            try:
+                row = pd.Series(rec)
+                deal = self._row_to_closed(row)     # inherited from DataStore
+                if deal:
+                    deals.append(deal)
+            except Exception as e:
+                print(f"[GSheetDataStore] skip closed row: {e}")
+        return deals
+
+    # ── WRITE PIPELINE ─────────────────────────────
+    def _pipeline_row_values(self, deal):
+        """Return an ordered list of values matching the sheet's header row."""
+        ws = self._ws(config.SHEET_PIPELINE)
+        headers = ws.row_values(1)
+        cl_json = self._format_checklist_json(deal.checklists)
+        row_dict = {
+            PIPELINE_COL_ISSUER:      deal.company_name,
+            PIPELINE_COL_TYPE:        deal.instrument_type,
+            PIPELINE_COL_ISSUER_TYPE: deal.issuer_type,
+            PIPELINE_COL_QUANTUM:     deal.issuance_size,
+            PIPELINE_COL_DATE:        str(deal.funding_date),
+            PIPELINE_COL_CREDIT:      deal.status,
+            PIPELINE_COL_RATING:      deal.rating,
+            PIPELINE_COL_SECURITY:    deal.security,
+            PIPELINE_COL_STATUS:      deal.status,
+            PIPELINE_COL_CREATED:     str(deal.created_date),
+            PIPELINE_COL_CHECKLIST:   cl_json,
+        }
+        return headers, [str(row_dict.get(h, '')) for h in headers]
+
+    def save_pipeline_deal(self, deal):
+        ws = self._ws(config.SHEET_PIPELINE)
+        _, ordered = self._pipeline_row_values(deal)
+        ws.append_row(ordered, value_input_option='USER_ENTERED')
+
+    def update_pipeline_deal(self, company_name, updated_deal):
+        ws = self._ws(config.SHEET_PIPELINE)
+        headers, ordered = self._pipeline_row_values(updated_deal)
+        try:
+            issuer_col = headers.index(PIPELINE_COL_ISSUER) + 1
+        except ValueError:
+            return
+        all_issuers = ws.col_values(issuer_col)
+        for row_i, val in enumerate(all_issuers[1:], 2):   # skip header
+            if str(val).strip().lower() == company_name.lower():
+                ws.update(
+                    range_name=f'A{row_i}',
+                    values=[ordered],
+                    value_input_option='USER_ENTERED'
+                )
+                return
+
+    def delete_pipeline_deal(self, company_name):
+        ws = self._ws(config.SHEET_PIPELINE)
+        headers = ws.row_values(1)
+        try:
+            issuer_col = headers.index(PIPELINE_COL_ISSUER) + 1
+        except ValueError:
+            return
+        all_issuers = ws.col_values(issuer_col)
+        for row_i, val in enumerate(all_issuers[1:], 2):
+            if str(val).strip().lower() == company_name.lower():
+                ws.delete_rows(row_i)
+                return
+
+    # ── WRITE CLOSED ───────────────────────────────
+    def save_closed_deal(self, deal):
+        ws = self._ws(config.SHEET_CLOSED)
+        headers = ws.row_values(1)
+        row_dict = {
+            CLOSED_COL_ISSUER:      deal.company_name,
+            CLOSED_COL_TYPE:        deal.instrument_type,
+            CLOSED_COL_ISSUER_TYPE: deal.issuer_type,
+            CLOSED_COL_QUANTUM:     deal.issuance_size,
+            CLOSED_COL_ISIN:        deal.isin,
+            CLOSED_COL_COUPON:      deal.coupon,
+            CLOSED_COL_TENOR:       deal.tenor,
+            CLOSED_COL_RATING:      deal.rating,
+            CLOSED_COL_SECURITY:    deal.security,
+            CLOSED_COL_ISSUE_DATE:  str(deal.funding_date),
+            CLOSED_COL_MATURITY:    str(deal.maturity_date),
+        }
+        ordered = [str(row_dict.get(h, '')) for h in headers]
+        ws.append_row(ordered, value_input_option='USER_ENTERED')
+
+    def move_to_closed(self, pipeline_deal, closed_deal):
+        self.delete_pipeline_deal(pipeline_deal.company_name)
+        self.save_closed_deal(closed_deal)
+
+    # ── OVERRIDES that delegate to parent ──────────
+    def company_exists(self, company_name):
+        return any(d.company_name.lower() == company_name.lower()
+                   for d in self.load_pipeline_deals())
+
+    def get_deal_by_company(self, company_name):
+        for d in self.load_pipeline_deals():
+            if d.company_name.lower() == company_name.lower():
+                return d
+        return None
+
+
+# ══════════════════════════════════════════════════════════
+#  FACTORY
+# ══════════════════════════════════════════════════════════
+
+def get_data_store():
+    """
+    Return the right DataStore based on the storage_mode session flag.
+    Falls back to local Excel if Google Sheets fails or creds are missing.
+    """
+    try:
+        import streamlit as st
+        mode = st.session_state.get('storage_mode', '📁 Local Folder')
+    except Exception:
+        mode = '📁 Local Folder'
+
+    if 'Google' in mode:
+        if not config.GOOGLE_CREDS_FILE.exists():
+            try:
+                import streamlit as st
+                st.warning(
+                    "⚠️ Google Drive mode selected but `service_account.json` "
+                    "not found. Using local Excel. Place the file in "
+                    f"`{config.GOOGLE_CREDS_FILE.parent}` to enable Google Sheets."
+                )
+            except Exception:
+                pass
+            return DataStore()
+        try:
+            return GSheetDataStore()
+        except Exception as e:
+            try:
+                import streamlit as st
+                st.error(f"Google Sheets connection failed: {e}\nFalling back to local Excel.")
+            except Exception:
+                print(f"[get_data_store] Google Sheets failed: {e}. Using local Excel.")
+            return DataStore()
+
+    return DataStore()

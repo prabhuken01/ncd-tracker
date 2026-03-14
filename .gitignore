@@ -27,8 +27,8 @@ service_account.json
 *.swo
 .DS_Store
 
-# Streamlit
-.streamlit/
+# Streamlit — allow config.toml, block secrets
+.streamlit/secrets.toml
 
 # Claude Code internals
 .claude/

@@ -34,6 +34,10 @@ except:
 SHEET_PIPELINE = "Issuance Pipeline"
 SHEET_CLOSED = "Closed NCD Deal"
 
+# ===== GOOGLE SHEETS =====
+GOOGLE_SHEET_NAME = "Issuance Tracker"
+GOOGLE_CREDS_FILE = BASE_DIR / "service_account.json"
+
 # ===== APPLICATION SETTINGS =====
 APP_TITLE = "Issuance Tracker"
 APP_SUBTITLE = "Structured Product Solutions — Issuer Readiness"

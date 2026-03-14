@@ -10,7 +10,7 @@ from pathlib import Path
 import io
 
 import config
-from data_store import DataStore
+from data_store import get_data_store
 from utils import (
     calculate_summary_stats, filter_deals_by_type,
     format_amount, format_date, format_t_countdown, create_company_folder
@@ -25,7 +25,7 @@ from constants import PHASE_DESCRIPTIONS, PHASE_TIMINGS
 def render_dashboard():
     """Main dashboard — summary stats + compact deal cards."""
 
-    ds        = DataStore()
+    ds        = get_data_store()
     all_deals = ds.load_pipeline_deals()
     stats     = calculate_summary_stats(all_deals)
 

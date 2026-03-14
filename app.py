@@ -16,7 +16,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 import config
-from data_store import DataStore
+from data_store import DataStore, GSheetDataStore, get_data_store
 from dashboard import render_dashboard, render_future_scope
 from deal_pages import render_new_deal_form, render_info_panel, render_deal_detail, render_closed_deals
 
@@ -273,7 +273,11 @@ def init_session_state():
         st.session_state['confirm_delete'] = None
 
     if 'storage_mode' not in st.session_state:
-        st.session_state['storage_mode'] = '📁 Local Folder'
+        # Auto-select Google Sheets if credentials file is present
+        if config.GOOGLE_CREDS_FILE.exists():
+            st.session_state['storage_mode'] = '☁️ Google Drive'
+        else:
+            st.session_state['storage_mode'] = '📁 Local Folder'
 
 
 # ===== SIDEBAR NAVIGATION =====
@@ -310,51 +314,65 @@ def render_sidebar():
 
         # ── Storage Mode Toggle ──
         st.markdown("### 🗄️ Storage Mode")
+        options     = ["📁 Local Folder", "☁️ Google Drive"]
+        current_idx = 1 if st.session_state['storage_mode'] == '☁️ Google Drive' else 0
         storage_choice = st.radio(
             "Select storage",
-            ["📁 Local Folder", "☁️ Google Drive (WIP)"],
-            index=0 if st.session_state['storage_mode'] == '📁 Local Folder' else 1,
+            options,
+            index=current_idx,
             label_visibility="collapsed",
         )
         st.session_state['storage_mode'] = storage_choice
 
-        if storage_choice == "☁️ Google Drive (WIP)":
-            st.info("⚠️ Google Drive mode is coming soon.", icon="ℹ️")
-            with st.expander("📋 Setup Instructions"):
-                st.markdown("""
-**To enable Google Sheets / Drive sync:**
+        creds_ok = config.GOOGLE_CREDS_FILE.exists()
+        if storage_choice == "☁️ Google Drive":
+            if creds_ok:
+                st.success("✅ service_account.json found", icon="🔑")
+                # Show spreadsheet link if available
+                try:
+                    _gs = GSheetDataStore()
+                    st.markdown(
+                        f"[📊 Open Google Sheet]({_gs.spreadsheet_url})",
+                        unsafe_allow_html=False,
+                    )
+                except Exception as _e:
+                    st.warning(f"Sheet not yet accessible: {_e}")
+            else:
+                st.warning("⚠️ `service_account.json` not found in Code_Streamlit/")
+                with st.expander("📋 Setup Instructions"):
+                    st.markdown("""
+**Steps to enable Google Sheets:**
 
-1. **Create a Google Cloud project**
-   - Go to [console.cloud.google.com](https://console.cloud.google.com)
-   - Create a new project (e.g. `ncd-tracker`)
-
-2. **Enable APIs**
-   - Enable **Google Sheets API**
-   - Enable **Google Drive API**
-
-3. **Create Service Account**
-   - IAM & Admin → Service Accounts → Create
+1. **Create service account** (Google Cloud → IAM → Service Accounts)
+   - Name/ID: `ncd-tracker`
    - Role: **Editor**
-   - Download JSON key file → save as `service_account.json`
+
+2. **Download JSON key**
+   - Click the service account → **Keys** tab
+   - Add Key → Create new key → **JSON**
+   - Rename downloaded file to `service_account.json`
    - Place in `Code_Streamlit/` folder
 
-4. **Share your Sheet**
-   - Open your Google Sheet
-   - Share → paste the service account email (ends with `@...iam.gserviceaccount.com`)
+3. **Enable APIs** (APIs & Services → Library)
+   - Google Sheets API ✅
+   - Google Drive API ✅
+
+4. **Share your Google Sheet** *(auto-created on first run)*
+   - Open the sheet → Share → add service account email
    - Give **Editor** access
 
-5. **Add to Streamlit secrets**
-   - On Streamlit Cloud: Settings → Secrets
-   - Add: `GOOGLE_SHEETS_KEY = <JSON content>`
-
-*Contact your admin to complete this setup.*
+5. **Streamlit Cloud** → Settings → Secrets → add:
+   ```
+   [gcp_service_account]
+   # paste contents of service_account.json here
+   ```
 """)
 
         st.markdown("---")
 
         # ── Quick Stats ──
         try:
-            ds = DataStore()
+            ds = get_data_store()
             pipeline_deals = ds.load_pipeline_deals()
             closed_deals_list = ds.load_closed_deals()
 

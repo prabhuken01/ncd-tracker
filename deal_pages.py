@@ -10,7 +10,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import config
-from data_store import DataStore
+from data_store import get_data_store
 from models import PipelineDeal, ClosedDeal, validate_new_deal_form, validate_closure_form
 from utils import (
     format_amount, format_date, format_t_countdown, format_percentage,
@@ -113,7 +113,7 @@ def render_new_deal_form():
                 st.error("⚠️ Please fix the following errors:")
                 display_error_messages(errors)
             else:
-                ds = DataStore()
+                ds = get_data_store()
                 if ds.company_exists(company_name):
                     st.error(config.ERROR_DUPLICATE_ENTRY)
                 else:
@@ -178,7 +178,7 @@ def render_deal_detail():
         st.error("No deal selected")
         return
 
-    ds   = DataStore()
+    ds   = get_data_store()
     deal = ds.get_deal_by_company(company_name)
     if not deal:
         st.error(f"Deal not found: {company_name}")
@@ -220,6 +220,10 @@ def render_deal_detail():
         pct = deal.get_overall_completion_percentage()
         st.progress(pct / 100)
         st.markdown(f"**{deal.checklist_progress}**")
+
+    # ── Edit deal details ──────────────────────────
+    with st.expander("✏️ Edit Deal Details", expanded=False):
+        _render_edit_form(deal, ds)
 
     st.markdown("---")
 
@@ -404,6 +408,92 @@ def _generate_pipeline_term_sheet(deal):
         st.error(f"Error: {e}")
 
 
+def _render_edit_form(deal, ds):
+    """Inline edit form — lets user change all pipeline deal fields."""
+    st.markdown("#### Edit issuance details")
+    st.caption("Changes are saved immediately to the active storage backend.")
+
+    with st.form(f"edit_form_{deal.company_name}"):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            new_name = st.text_input(
+                "Issuer Name *",
+                value=deal.company_name,
+                placeholder="Full legal name",
+            )
+            new_type = st.selectbox(
+                "Instrument Type *",
+                options=config.INSTRUMENT_TYPES,
+                index=config.INSTRUMENT_TYPES.index(deal.instrument_type)
+                      if deal.instrument_type in config.INSTRUMENT_TYPES else 0,
+            )
+            new_issuer_type = st.selectbox(
+                "Issuer Type (FS / EF) *",
+                options=config.ISSUER_TYPES,
+                index=config.ISSUER_TYPES.index(deal.issuer_type)
+                      if deal.issuer_type in config.ISSUER_TYPES else 0,
+            )
+
+        with col2:
+            new_size = st.number_input(
+                "Quantum (₹ Cr) *",
+                value=float(deal.issuance_size),
+                min_value=1.0,
+                max_value=float(config.MAX_ISSUANCE_SIZE),
+                step=10.0,
+                format="%.2f",
+            )
+            new_date = st.date_input(
+                "Tentative Issuance Date (T-Day) *",
+                value=deal.funding_date,
+                format=config.DATE_INPUT_FORMAT,
+            )
+            rating_opts = ["N/A"] + config.RATING_OPTIONS
+            new_rating = st.selectbox(
+                "Credit Rating",
+                options=rating_opts,
+                index=rating_opts.index(deal.rating) if deal.rating in rating_opts else 0,
+            )
+
+        new_security = st.selectbox(
+            "Security Type",
+            options=config.SECURITY_TYPES,
+            index=config.SECURITY_TYPES.index(deal.security)
+                  if deal.security in config.SECURITY_TYPES else 0,
+        )
+
+        c_save, c_cancel = st.columns(2)
+        with c_save:
+            save = st.form_submit_button("💾 Save Changes", type="primary", use_container_width=True)
+        with c_cancel:
+            cancel = st.form_submit_button("❌ Cancel", use_container_width=True)
+
+    if cancel:
+        st.rerun()
+
+    if save:
+        if not new_name.strip():
+            st.error("❌ Issuer name cannot be empty.")
+            return
+        old_name = deal.company_name
+        # Apply changes to the in-memory deal object
+        deal.company_name    = new_name.strip()
+        deal.instrument_type = new_type
+        deal.issuer_type     = new_issuer_type
+        deal.issuance_size   = new_size
+        deal.funding_date    = new_date
+        deal.rating          = new_rating
+        deal.security        = new_security
+        # Persist
+        ds.update_pipeline_deal(old_name, deal)
+        st.success(f"✅ Deal updated successfully!")
+        # If name changed, update session state pointer
+        if new_name.strip() != old_name:
+            st.session_state['selected_deal'] = new_name.strip()
+        st.rerun()
+
+
 def _render_closure_form(deal, ds):
     st.markdown("## 🎯 Close Deal & Archive")
     st.markdown(f"Fill in final details to close **{deal.company_name}**:")
@@ -467,7 +557,7 @@ def render_closed_deals():
     st.markdown("## ✅ Closed NCD Deals")
     st.markdown("Archive of successfully completed NCD issuances")
 
-    ds           = DataStore()
+    ds           = get_data_store()
     closed_deals = ds.load_closed_deals()
 
     if not closed_deals:

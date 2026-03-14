@@ -16,9 +16,11 @@ import config
 # ══════════════════════════════════════════════════
 
 def format_amount(amount):
+    """Return e.g. '₹100.00 Cr'. AMOUNT_UNIT already contains '₹ Cr'
+    so we use a plain format to avoid duplication."""
     if amount is None:
         return "N/A"
-    return f"{config.AMOUNT_UNIT} {amount:,.{config.AMOUNT_DECIMAL_PLACES}f} Cr"
+    return f"₹{amount:,.{config.AMOUNT_DECIMAL_PLACES}f} Cr"
 
 
 def format_percentage(value):
