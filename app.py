@@ -16,12 +16,9 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 import config
-from excel_manager import ExcelManager
-from dashboard import render_dashboard
-from new_deal import render_new_deal_form, render_info_panel
-from deal_detail import render_deal_detail
-from closed_deals import render_closed_deals
-from future_scope import render_future_scope
+from data_store import DataStore
+from dashboard import render_dashboard, render_future_scope
+from deal_pages import render_new_deal_form, render_info_panel, render_deal_detail, render_closed_deals
 
 # ===== PAGE CONFIGURATION =====
 st.set_page_config(
@@ -154,9 +151,9 @@ def render_sidebar():
         
         # Quick Stats
         try:
-            excel_mgr = ExcelManager()
-            pipeline_deals = excel_mgr.load_pipeline_deals()
-            closed_deals = excel_mgr.load_closed_deals()
+            ds = DataStore()
+            pipeline_deals = ds.load_pipeline_deals()
+            closed_deals = ds.load_closed_deals()
             
             st.markdown("### 📊 Quick Stats")
             st.metric("Pipeline Deals", len(pipeline_deals))

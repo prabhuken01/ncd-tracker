@@ -17,11 +17,11 @@ if IS_CLOUD:
     TERM_SHEET_TEMPLATE = BASE_DIR / "Term_Sheet_Template.docx"
     ISSUANCE_FOLDER = BASE_DIR / "issuances"
 else:
-    # Running locally
-    BASE_DIR = Path(r"E:\Personal\Trading_Champion\Projects\Solutions_Execution")
+    # Running locally — Excel file is now inside Code_Streamlit
+    BASE_DIR = Path(__file__).parent
     DATA_FILE = BASE_DIR / "Bond_Primary_Deals.xlsx"
-    TERM_SHEET_TEMPLATE = BASE_DIR / "Term_Sheet_Template.docx"
-    ISSUANCE_FOLDER = BASE_DIR / "Issuance"
+    TERM_SHEET_TEMPLATE = Path(r"E:\Personal\Trading_Champion\Projects\Solutions_Execution") / "Term_Sheet_Template.docx"
+    ISSUANCE_FOLDER = Path(r"E:\Personal\Trading_Champion\Projects\Solutions_Execution") / "Issuance"
 
 # Create necessary directories
 try:
@@ -53,7 +53,8 @@ DATE_INPUT_FORMAT = "DD/MM/YYYY"
 
 # ===== DROPDOWN OPTIONS =====
 INSTRUMENT_TYPES = ["Listed NCD", "Unlisted NCD"]
-ASSET_CLASSES = ["NBFC", "Housing Finance", "MFI", "Corporate"]
+ISSUER_TYPES     = ["FS", "EF"]          # FS = Financial Sector; EF = Enterprise Finance
+ASSET_CLASSES    = ["NBFC", "Housing Finance", "MFI", "Corporate"]
 RATING_OPTIONS = ["AAA", "AA+", "AA", "AA-", "A+", "A", "A-", "BBB+", "BBB", "BBB-", "Unrated"]
 SECURITY_TYPES = [
     "Unsecured",
