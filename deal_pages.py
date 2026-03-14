@@ -198,10 +198,23 @@ def render_deal_detail():
         st.error("No deal selected")
         return
 
-    ds   = get_data_store()
-    deal = ds.get_deal_by_company(company_name)
+    try:
+        ds   = get_data_store()
+        deal = ds.get_deal_by_company(company_name)
+    except Exception as load_err:
+        st.error(f"⚠️ Could not load deal: {load_err}")
+        if st.button("← Back to Dashboard", key="back_load_err"):
+            st.session_state['page'] = 'dashboard'
+            st.rerun()
+        return
+
     if not deal:
-        st.error(f"Deal not found: {company_name}")
+        st.warning(f"Deal **{company_name}** not found in current storage. "
+                   f"If you are in Google Drive mode it may still be syncing — "
+                   f"try refreshing the page.")
+        if st.button("← Back to Dashboard", key="back_not_found"):
+            st.session_state['page'] = 'dashboard'
+            st.rerun()
         return
 
     # Back button
@@ -293,7 +306,11 @@ def render_deal_detail():
                         item.completed = True
                         item.status    = "Completed"
                 deal.update_checklist_progress()
-                ds.update_pipeline_deal(deal.company_name, deal)
+                try:
+                    ds.update_pipeline_deal(deal.company_name, deal)
+                except Exception as save_err:
+                    st.error(f"⚠️ Could not save to storage: {save_err}")
+                    st.stop()
                 st.session_state['show_closure_form'] = True
                 st.rerun()
         else:
@@ -380,12 +397,18 @@ def _render_phase_checklist(deal, phase, ds):
                             item.completed = True
                             item.status    = "Completed"
                 deal.update_checklist_progress()
-                ds.update_pipeline_deal(deal.company_name, deal)
-                # T-Day (idx 3) or Post (idx 4) → issuance is effectively done
-                if phase_idx >= 3:
-                    st.toast("🎉 Issuance complete! Opening closure form…", icon="🎉")
-                    st.session_state['show_closure_form'] = True
-                st.rerun()
+                save_ok = True
+                try:
+                    ds.update_pipeline_deal(deal.company_name, deal)
+                except Exception as save_err:
+                    save_ok = False
+                    st.error(f"⚠️ Could not save to storage: {save_err}")
+                if save_ok:
+                    # T-Day (idx 3) or Post (idx 4) → issuance is effectively done
+                    if phase_idx >= 3:
+                        st.toast("🎉 Issuance complete! Opening closure form…", icon="🎉")
+                        st.session_state['show_closure_form'] = True
+                    st.rerun()
 
     st.markdown("")
 
@@ -407,8 +430,11 @@ def _render_checklist_item(deal, phase, item, ds):
             item.completed = checked
             item.status    = "Completed" if checked else "Pending"
             deal.update_checklist_progress()
-            ds.update_pipeline_deal(deal.company_name, deal)
-            st.rerun()
+            try:
+                ds.update_pipeline_deal(deal.company_name, deal)
+                st.rerun()
+            except Exception as e:
+                st.error(f"⚠️ Save failed: {e}")
 
     with col_content:
         title = f"**{item.step_number:02d}.** {item.task_title}"
@@ -457,7 +483,10 @@ def _render_checklist_item(deal, phase, item, ds):
                 )
                 if notes != item.sub_notes:
                     item.sub_notes = notes
-                    ds.update_pipeline_deal(deal.company_name, deal)
+                    try:
+                        ds.update_pipeline_deal(deal.company_name, deal)
+                    except Exception as e:
+                        st.error(f"⚠️ Notes save failed: {e}")
         st.markdown("")
 
 
