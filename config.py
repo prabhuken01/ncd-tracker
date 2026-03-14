@@ -17,11 +17,11 @@ if IS_CLOUD:
     TERM_SHEET_TEMPLATE = BASE_DIR / "Term_Sheet_Template.docx"
     ISSUANCE_FOLDER = BASE_DIR / "issuances"
 else:
-    # Running locally — Excel file is now inside Code_Streamlit
+    # Running locally — all files are now inside Code_Streamlit
     BASE_DIR = Path(__file__).parent
     DATA_FILE = BASE_DIR / "Bond_Primary_Deals.xlsx"
-    TERM_SHEET_TEMPLATE = Path(r"E:\Personal\Trading_Champion\Projects\Solutions_Execution") / "Term_Sheet_Template.docx"
-    ISSUANCE_FOLDER = Path(r"E:\Personal\Trading_Champion\Projects\Solutions_Execution") / "Issuance"
+    TERM_SHEET_TEMPLATE = BASE_DIR / "Term_Sheet_Template.docx"
+    ISSUANCE_FOLDER = BASE_DIR / "Issuance"
 
 # Create necessary directories
 try:
@@ -35,7 +35,7 @@ SHEET_PIPELINE = "Issuance Pipeline"
 SHEET_CLOSED = "Closed NCD Deal"
 
 # ===== APPLICATION SETTINGS =====
-APP_TITLE = "NCD Issuance Tracker"
+APP_TITLE = "Issuance Tracker"
 APP_SUBTITLE = "Structured Product Solutions — Issuer Readiness"
 PAGE_ICON = "📊"
 

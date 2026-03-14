@@ -7,6 +7,7 @@ All deal-lifecycle UI: creation, checklist tracking, closure, archive view.
 import streamlit as st
 import pandas as pd
 from datetime import date, timedelta
+from pathlib import Path
 
 import config
 from data_store import DataStore
@@ -528,11 +529,63 @@ def _render_closed_table(deals):
     )
 
     st.markdown("---")
-    csv = df.to_csv(index=False)
-    st.download_button(
-        "📥 Download CSV",
-        data       = csv,
-        file_name  = f"closed_ncd_deals_{date.today().strftime('%Y%m%d')}.csv",
-        mime       = "text/csv",
-        use_container_width = True,
-    )
+    col_csv, col_ts = st.columns(2)
+    with col_csv:
+        csv = df.to_csv(index=False)
+        st.download_button(
+            "📥 Download CSV",
+            data       = csv,
+            file_name  = f"closed_ncd_deals_{date.today().strftime('%Y%m%d')}.csv",
+            mime       = "text/csv",
+            use_container_width = True,
+        )
+    with col_ts:
+        if st.button("📂 Generate All Term Sheets (Issuance Folder)",
+                     use_container_width=True, type="secondary"):
+            _populate_issuance_folder(deals)
+
+
+def _populate_issuance_folder(deals):
+    """Generate term sheets for all closed deals and save to Issuance folder."""
+    try:
+        from term_sheet import TermSheetGenerator
+    except ImportError as e:
+        st.error(f"Could not import TermSheetGenerator: {e}")
+        return
+
+    if not Path(config.TERM_SHEET_TEMPLATE).exists():
+        st.warning(
+            f"⚠️ Term sheet template not found.\n"
+            f"Please place `Term_Sheet_Template.docx` at `{config.TERM_SHEET_TEMPLATE}`"
+        )
+        return
+
+    gen     = TermSheetGenerator()
+    ok_list = []
+    fail_list = []
+
+    progress_bar = st.progress(0, text="Generating term sheets…")
+    total = len(deals)
+
+    for idx, deal in enumerate(deals):
+        try:
+            folder = create_company_folder(deal.company_name, config.ISSUANCE_FOLDER)
+            safe   = "".join(c if c.isalnum() or c in ('_', '-') else '_' for c in deal.company_name)
+            isin   = deal.isin.replace("/", "_").replace(" ", "_") if deal.isin else "NOISN"
+            ts_path = folder / f"TermSheet_{safe}_{isin}.docx"
+            gen.generate_with_highlights(deal, ts_path)
+            ok_list.append(f"✅ {deal.company_name} → `{ts_path.name}`")
+        except Exception as e:
+            fail_list.append(f"❌ {deal.company_name}: {e}")
+        progress_bar.progress((idx + 1) / total, text=f"Processing {deal.company_name}…")
+
+    progress_bar.empty()
+
+    if ok_list:
+        st.success(f"Generated {len(ok_list)} term sheet(s) in `{config.ISSUANCE_FOLDER}`")
+        for msg in ok_list:
+            st.markdown(msg)
+    if fail_list:
+        st.warning(f"{len(fail_list)} deal(s) failed:")
+        for msg in fail_list:
+            st.markdown(msg)
