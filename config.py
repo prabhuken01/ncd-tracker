@@ -80,7 +80,9 @@ SECURITY_TYPES = [
 ]
 
 # ===== STATUS OPTIONS =====
-STATUS_OPTIONS = ["Pending", "In Progress", "Completed", "Blocked"]
+STATUS_OPTIONS = ["Pending", "In Progress", "Completed", "Not Applicable"]
+# Legacy alias — old data stored "Blocked"; treat it as "Not Applicable" on display
+_STATUS_LEGACY = {"Blocked": "Not Applicable"}
 
 # ===== T-DAY COUNTDOWN COLORS (light-bg scheme — dark text on tinted background) =====
 T_COUNTDOWN_COLORS = {

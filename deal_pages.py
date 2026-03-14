@@ -353,23 +353,38 @@ def _render_phase_checklist(deal, phase, ds):
     with pct_col:
         st.markdown(f"**{completed}/{total} — {pct}%**")
 
-    # ── "Mark all complete" button ───────────────
+    # ── "Mark all complete" button (cumulative) ──
+    # Marks this phase AND all preceding phases complete.
+    # If T-Day or Post is marked, also opens the closure form.
     all_done = (completed == total and total > 0)
+    phase_idx = config.PHASE_NAMES.index(phase) if phase in config.PHASE_NAMES else -1
+
     btn_col, _ = st.columns([2, 5])
     with btn_col:
         if all_done:
-            st.success("✅ All items complete", icon="✅")
+            st.success("✅ Phase complete", icon="✅")
         else:
-            if st.button(
-                "☑ Mark all complete",
-                key=f"mark_all_{deal.company_name}_{phase}",
-                use_container_width=True,
-            ):
-                for item in cl.items:
-                    item.completed = True
-                    item.status    = "Completed"
+            # Label tells user it will also complete earlier phases
+            earlier = [p for p in config.PHASE_NAMES[:phase_idx] if p in deal.checklists]
+            label = (
+                f"☑ Mark all complete"
+                if not earlier
+                else f"☑ Mark complete (incl. {len(earlier)} earlier phase{'s' if len(earlier)>1 else ''})"
+            )
+            if st.button(label, key=f"mark_all_{deal.company_name}_{phase}",
+                         use_container_width=True):
+                # Mark current phase AND all phases before it
+                for p in config.PHASE_NAMES[:phase_idx + 1]:
+                    if p in deal.checklists:
+                        for item in deal.checklists[p].items:
+                            item.completed = True
+                            item.status    = "Completed"
                 deal.update_checklist_progress()
                 ds.update_pipeline_deal(deal.company_name, deal)
+                # T-Day (idx 3) or Post (idx 4) → issuance is effectively done
+                if phase_idx >= 3:
+                    st.toast("🎉 Issuance complete! Opening closure form…", icon="🎉")
+                    st.session_state['show_closure_form'] = True
                 st.rerun()
 
     st.markdown("")
@@ -410,14 +425,17 @@ def _render_checklist_item(deal, phase, item, ds):
             if item.timing_note:
                 st.caption(f"⏰ {item.timing_note}")
         with m3:
+            # Migrate legacy "Blocked" → "Not Applicable" for display
+            display_status = config._STATUS_LEGACY.get(item.status, item.status)
             new_status = st.selectbox(
                 "Status",
                 options   = config.STATUS_OPTIONS,
-                index     = config.STATUS_OPTIONS.index(item.status) if item.status in config.STATUS_OPTIONS else 0,
+                index     = config.STATUS_OPTIONS.index(display_status)
+                            if display_status in config.STATUS_OPTIONS else 0,
                 key       = f"sts_{deal.company_name}_{phase}_{item.step_number}",
                 label_visibility="collapsed",
             )
-            if new_status != item.status:
+            if new_status != display_status:
                 item.status    = new_status
                 # Keep the completed boolean in sync with the status dropdown
                 item.completed = (new_status == "Completed")

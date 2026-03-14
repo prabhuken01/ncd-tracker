@@ -65,8 +65,8 @@ st.markdown("""
         background-color: #ffffff !important;
         border-right: 1px solid #e2e8f0 !important;
     }
-    /* All text in sidebar dark */
-    [data-testid="stSidebar"] * {
+    /* All NON-BUTTON text in sidebar dark — excludes primary button children */
+    [data-testid="stSidebar"] *:not([data-testid="baseButton-primary"]):not([data-testid="baseButton-primary"] *) {
         color: #1e293b !important;
     }
     /* Sidebar headings */
@@ -77,7 +77,11 @@ st.markdown("""
     }
 
     /* ══════════════════════════════════════════
-       3. BUTTONS — primary blue, secondary light
+       3. BUTTONS — primary blue (white text),
+          secondary light (dark text)
+       Rule must come AFTER the sidebar * rule so
+       primary button text is always white even in
+       the sidebar.
     ══════════════════════════════════════════ */
     /* Secondary / default buttons */
     [data-testid="baseButton-secondary"],
@@ -94,7 +98,7 @@ st.markdown("""
         border-color: #9ca3af !important;
     }
 
-    /* Primary buttons — keep blue */
+    /* Primary buttons — dark blue bg, ALWAYS white text */
     [data-testid="baseButton-primary"],
     button[kind="primary"] {
         background-color: #1e3a8a !important;
@@ -105,6 +109,18 @@ st.markdown("""
     [data-testid="baseButton-primary"]:hover,
     button[kind="primary"]:hover {
         background-color: #1e40af !important;
+    }
+    /* Force white on every child element inside primary buttons.
+       This overrides the sidebar * rule which directly targets child nodes. */
+    [data-testid="baseButton-primary"] p,
+    [data-testid="baseButton-primary"] span,
+    [data-testid="baseButton-primary"] div,
+    [data-testid="baseButton-primary"] label,
+    button[kind="primary"] p,
+    button[kind="primary"] span,
+    button[kind="primary"] div {
+        color: #ffffff !important;
+        background-color: transparent !important;
     }
 
     /* ══════════════════════════════════════════

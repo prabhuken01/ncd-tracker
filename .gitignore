@@ -39,9 +39,23 @@ service_account.json
 # Issuance folder (generated locally — not stored in repo)
 Issuance/
 
-# Temp Excel lock files
+# Temp Excel lock files (Windows Office lock files)
 ~$*.xlsx
 ~$*.docx
+
+# Misnamed credentials files
+service_account.json.json
+
+# Documentation / planning files (not needed by the running app)
+STREAMLIT_CLOUD_DEPLOYMENT.md
+PYTHON_FILES_INDEX.txt
+DEPLOYMENT_SUMMARY.txt
+
+# Business-requirement / planning spreadsheets (not needed by app)
+Biz_Requirement_Streamlined.xlsx
+
+# Utility scripts not part of the app
+populate_issuance.py
 
 # Jupyter
 *.ipynb_checkpoints/
