@@ -442,23 +442,29 @@ class GSheetDataStore(DataStore):
         self.ss = self._open_or_create_spreadsheet()
 
     def _open_or_create_spreadsheet(self):
+        """
+        Open the Google Sheet by name.
+        Auto-create is intentionally disabled: service accounts have no Drive
+        storage quota, so gc.create() always raises a 403 quota error.
+        Instead we show clear one-time setup instructions to the user.
+        """
         import gspread
         try:
-            ss = self.gc.open(config.GOOGLE_SHEET_NAME)
+            return self.gc.open(config.GOOGLE_SHEET_NAME)
         except gspread.SpreadsheetNotFound:
-            ss = self.gc.create(config.GOOGLE_SHEET_NAME)
-            # Rename default Sheet1 → Pipeline sheet
-            ws1 = ss.get_worksheet(0)
-            ws1.update_title(config.SHEET_PIPELINE)
-            ws1.append_row(PIPELINE_HEADERS)
-            # Create Closed sheet
-            ws2 = ss.add_worksheet(
-                title=config.SHEET_CLOSED,
-                rows=500, cols=len(CLOSED_HEADERS) + 5
+            try:
+                sa_email = self.gc.auth.service_account_email
+            except Exception:
+                sa_email = "your-service-account@project.iam.gserviceaccount.com"
+            raise RuntimeError(
+                f"Sheet '{config.GOOGLE_SHEET_NAME}' not found or not yet shared.\n\n"
+                f"One-time setup (takes 1 minute):\n"
+                f"1. Open drive.google.com (logged in as prabhu.ken01@gmail.com)\n"
+                f"2. Click New → Google Sheets → rename it to exactly:  Issuance Tracker\n"
+                f"3. Click Share → paste this email → give Editor access:\n"
+                f"   {sa_email}\n"
+                f"4. Refresh this app — columns & data will auto-populate."
             )
-            ws2.append_row(CLOSED_HEADERS)
-            print(f"[GSheetDataStore] Created new spreadsheet: {ss.url}")
-        return ss
 
     def _ws(self, name):
         """Return worksheet by name; create it with headers if missing."""
@@ -633,6 +639,16 @@ def get_data_store():
             return DataStore()
         try:
             return GSheetDataStore()
+        except RuntimeError as e:
+            # RuntimeError = one-time setup needed (sheet not found / not shared)
+            # Show as amber warning with actionable steps, not a red crash box
+            try:
+                import streamlit as st
+                st.warning(f"☁️ Google Sheets — setup needed\n\n{e}\n\n"
+                           f"Using local Excel in the meantime.")
+            except Exception:
+                print(f"[get_data_store] GSheets setup needed: {e}")
+            return DataStore()
         except Exception as e:
             try:
                 import streamlit as st
