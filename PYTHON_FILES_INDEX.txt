@@ -1,0 +1,171 @@
+# 📂 All Python Files in NCD Tracker
+
+Complete listing of all 21 Python files with their purposes
+
+═══════════════════════════════════════════════════════════════════════
+
+## ROOT LEVEL (2 files)
+
+📄 app.py (245 lines)
+   - Main Streamlit application entry point
+   - Handles: routing, sidebar, session state, error handling
+
+📄 config.py (147 lines)  
+   - Central configuration
+   - Contains: paths, formats, constants, validation rules
+
+📄 verify.py (142 lines)
+   - Package verification script
+   - Checks: files, dependencies, statistics
+
+═══════════════════════════════════════════════════════════════════════
+
+## CONSTANTS PACKAGE (3 files)
+
+📄 constants/__init__.py (0 lines)
+   - Package initializer
+
+📄 constants/checklist_items.py (165 lines)
+   - 47-item 5-phase checklist structure
+   - Functions: filtering by instrument type
+
+📄 constants/field_definitions.py (136 lines)
+   - Excel column mappings
+   - Data types and validation specs
+
+═══════════════════════════════════════════════════════════════════════
+
+## DATA PACKAGE (3 files)
+
+📄 data/__init__.py (0 lines)
+   - Package initializer
+
+📄 data/data_models.py (195 lines)
+   - Classes: PipelineDeal, ClosedDeal, ChecklistItem, PhaseChecklist
+   - Methods: progress calculation, date handling, conversions
+
+📄 data/excel_manager.py (321 lines)
+   - Excel read/write operations
+   - Methods: load, save, update, delete, move to closed
+   - Handles: both Pipeline and Closed sheets
+
+═══════════════════════════════════════════════════════════════════════
+
+## DOCUMENTS PACKAGE (2 files)
+
+📄 documents/__init__.py (0 lines)
+   - Package initializer
+
+📄 documents/term_sheet_generator.py (232 lines)
+   - Auto-populate Word templates
+   - Features: placeholder replacement, highlighting, batch generation
+
+═══════════════════════════════════════════════════════════════════════
+
+## UI PACKAGE (6 files)
+
+📄 ui/__init__.py (0 lines)
+   - Package initializer
+
+📄 ui/dashboard.py (99 lines)
+   - Main dashboard view
+   - Features: summary stats, deal cards, filtering, T-countdown
+
+📄 ui/new_deal.py (132 lines)
+   - New deal creation form
+   - Features: validation, duplicate check, checklist initialization
+
+📄 ui/deal_detail.py (231 lines)
+   - Deal detail view with checklist
+   - Features: 5 phase tabs, progress tracking, closure workflow
+
+📄 ui/closed_deals.py (111 lines)
+   - Archive view for closed deals
+   - Features: filtering, table view, CSV export
+
+📄 ui/future_scope.py (120 lines)
+   - Phase 2 roadmap and feature requests
+   - Features: planned enhancements, feedback form
+
+═══════════════════════════════════════════════════════════════════════
+
+## UTILS PACKAGE (4 files)
+
+📄 utils/__init__.py (0 lines)
+   - Package initializer
+
+📄 utils/formatters.py (162 lines)
+   - Data formatting functions
+   - Functions: amounts (₹ Cr), dates (DD/MM/YYYY), percentages, 
+     T-countdown, tenor, ISIN, maturity calculation
+
+📄 utils/validators.py (191 lines)
+   - Input validation for all forms
+   - Validates: company name, amount, coupon, tenor, ISIN, dates, 
+     dropdowns, complete forms
+
+📄 utils/helpers.py (191 lines)
+   - Miscellaneous helper functions
+   - Functions: tooltips, messages, calculations, JSON handling,
+     session state, directory creation
+
+═══════════════════════════════════════════════════════════════════════
+
+## 📊 STATISTICS
+
+Total Python files: 21
+Total lines of code: 3,333
+Total packages: 5 (constants, data, documents, ui, utils)
+
+Average lines per module: 158
+Largest module: excel_manager.py (321 lines)
+Smallest modules: __init__.py files (0 lines each)
+
+═══════════════════════════════════════════════════════════════════════
+
+## 🔍 IMPORT STRUCTURE
+
+app.py
+├── config
+├── data.excel_manager (ExcelManager)
+├── ui.dashboard (render_dashboard)
+├── ui.new_deal (render_new_deal_form, render_info_panel)
+├── ui.deal_detail (render_deal_detail)
+├── ui.closed_deals (render_closed_deals)
+└── ui.future_scope (render_future_scope)
+
+ui/* modules
+├── config
+├── data.excel_manager
+├── data.data_models
+├── utils.formatters
+├── utils.validators
+└── utils.helpers
+
+data.excel_manager
+├── config
+├── constants.field_definitions
+├── constants.checklist_items
+└── data.data_models
+
+documents.term_sheet_generator
+├── config
+├── data.data_models
+└── utils.formatters
+
+═══════════════════════════════════════════════════════════════════════
+
+## 📥 HOW TO ACCESS FILES
+
+All files are located in:
+/mnt/user-data/outputs/ncd_tracker/
+
+And will be copied to:
+E:\Personal\Trading_Champion\Projects\Solutions_Execution\Code_Streamlit\
+
+You can:
+1. Download the entire folder from outputs
+2. View individual files using the file browser
+3. Copy to your local machine and run
+
+═══════════════════════════════════════════════════════════════════════
