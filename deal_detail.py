@@ -5,9 +5,9 @@ Detail view with phase-wise checklist tracking
 
 import streamlit as st
 import config
-from data.excel_manager import ExcelManager
-from utils.formatters import *
-from utils.helpers import display_success_message
+from excel_manager import ExcelManager
+from formatters import *
+from helpers import display_success_message
 
 def render_deal_detail():
     """Render deal detail page with checklist"""

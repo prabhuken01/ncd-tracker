@@ -6,10 +6,10 @@ Form for creating new NCD issuance deals
 import streamlit as st
 from datetime import date, timedelta
 import config
-from data.excel_manager import ExcelManager
-from data.data_models import PipelineDeal
-from utils.validators import validate_new_deal_form
-from utils.helpers import display_error_messages, display_success_message
+from excel_manager import ExcelManager
+from data_models import PipelineDeal
+from validators import validate_new_deal_form
+from helpers import display_error_messages, display_success_message
 
 def render_new_deal_form():
     """Render new deal initiation form"""

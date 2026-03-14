@@ -6,8 +6,8 @@ View for archived/completed NCD deals
 import streamlit as st
 import pandas as pd
 import config
-from data.excel_manager import ExcelManager
-from utils.formatters import *
+from excel_manager import ExcelManager
+from formatters import *
 
 def render_closed_deals():
     """Render closed deals view"""

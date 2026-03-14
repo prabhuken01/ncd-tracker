@@ -16,12 +16,12 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 import config
-from data.excel_manager import ExcelManager
-from ui.dashboard import render_dashboard
-from ui.new_deal import render_new_deal_form, render_info_panel
-from ui.deal_detail import render_deal_detail
-from ui.closed_deals import render_closed_deals
-from ui.future_scope import render_future_scope
+from excel_manager import ExcelManager
+from dashboard import render_dashboard
+from new_deal import render_new_deal_form, render_info_panel
+from deal_detail import render_deal_detail
+from closed_deals import render_closed_deals
+from future_scope import render_future_scope
 
 # ===== PAGE CONFIGURATION =====
 st.set_page_config(

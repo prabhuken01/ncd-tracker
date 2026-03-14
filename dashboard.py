@@ -6,9 +6,9 @@ Main dashboard view with summary statistics and deal cards
 import streamlit as st
 from datetime import date
 import config
-from data.excel_manager import ExcelManager
-from utils.formatters import *
-from utils.helpers import calculate_summary_stats, filter_deals_by_type
+from excel_manager import ExcelManager
+from formatters import *
+from helpers import calculate_summary_stats, filter_deals_by_type
 
 def render_dashboard():
     """Render main dashboard"""

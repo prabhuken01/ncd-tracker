@@ -7,25 +7,28 @@ import os
 from pathlib import Path
 
 # ===== FILE PATHS =====
-# For Streamlit Cloud deployment
-if os.getenv("STREAMLIT_RUNTIME_ENV") == "cloud":
-    # Running on Streamlit Cloud - use app directory
+# Auto-detect environment
+IS_CLOUD = os.path.exists('/mount/src')  # Streamlit Cloud specific path
+
+if IS_CLOUD:
+    # Running on Streamlit Cloud
     BASE_DIR = Path(__file__).parent
-    DATA_FILE = BASE_DIR / "data" / "Bond_Primary_Deals.xlsx"
-    TERM_SHEET_TEMPLATE = BASE_DIR / "templates" / "Term_Sheet_Template.docx"
-    ISSUANCE_FOLDER = BASE_DIR / "data" / "issuances"
+    DATA_FILE = BASE_DIR / "Bond_Primary_Deals.xlsx"
+    TERM_SHEET_TEMPLATE = BASE_DIR / "Term_Sheet_Template.docx"
+    ISSUANCE_FOLDER = BASE_DIR / "issuances"
 else:
-    # Running locally - use your local paths
+    # Running locally
     BASE_DIR = Path(r"E:\Personal\Trading_Champion\Projects\Solutions_Execution")
     DATA_FILE = BASE_DIR / "Bond_Primary_Deals.xlsx"
     TERM_SHEET_TEMPLATE = BASE_DIR / "Term_Sheet_Template.docx"
     ISSUANCE_FOLDER = BASE_DIR / "Issuance"
 
-# Ensure directories exist
-DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-if TERM_SHEET_TEMPLATE.parent.exists():
-    TERM_SHEET_TEMPLATE.parent.mkdir(parents=True, exist_ok=True)
-ISSUANCE_FOLDER.mkdir(parents=True, exist_ok=True)
+# Create necessary directories
+try:
+    DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    ISSUANCE_FOLDER.mkdir(parents=True, exist_ok=True)
+except:
+    pass  # Ignore errors in cloud environment
 
 # Sheet names in Excel file
 SHEET_PIPELINE = "Issuance Pipeline"

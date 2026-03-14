@@ -10,8 +10,8 @@ from pathlib import Path
 import re
 
 import config
-from data.data_models import ClosedDeal
-from utils.formatters import format_amount, format_percentage, format_date, format_tenor
+from data_models import ClosedDeal
+from formatters import format_amount, format_percentage, format_date, format_tenor
 
 class TermSheetGenerator:
     """Generates term sheets from template"""
