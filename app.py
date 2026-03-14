@@ -135,12 +135,17 @@ st.markdown("""
 
     /* ══════════════════════════════════════════
        6. TEXT ELEMENTS — always dark on light bg
+       NOTE: 'span' is intentionally excluded here so that
+       inline color styles (e.g. color:#fff on coloured badges)
+       are NOT overridden by this rule.
     ══════════════════════════════════════════ */
     h1, h2, h3, h4, h5, h6 { color: #1e293b !important; }
-    p, li, span, label      { color: #1e293b !important; }
+    p, li, label            { color: #1e293b !important; }
     .stMarkdown, .stText    { color: #1e293b !important; }
-    [data-testid="stCaption"]       { color: #64748b !important; }
+    [data-testid="stCaption"]          { color: #64748b !important; }
     [data-testid="stCaptionContainer"] { color: #64748b !important; }
+    /* Streamlit-specific text spans only — scoped so inline colours survive */
+    [data-testid="stMarkdownContainer"] > p > span:not([style*="color"]) { color: #1e293b; }
 
     /* ══════════════════════════════════════════
        7. TABS — clean white active, light gray bar
@@ -273,8 +278,8 @@ def init_session_state():
         st.session_state['confirm_delete'] = None
 
     if 'storage_mode' not in st.session_state:
-        # Auto-select Google Sheets if credentials file is present
-        if config.GOOGLE_CREDS_FILE.exists():
+        # Auto-select Google Sheets if credentials are available (file OR Streamlit Secrets)
+        if config.google_creds_available():
             st.session_state['storage_mode'] = '☁️ Google Drive'
         else:
             st.session_state['storage_mode'] = '📁 Local Folder'
@@ -324,10 +329,13 @@ def render_sidebar():
         )
         st.session_state['storage_mode'] = storage_choice
 
-        creds_ok = config.GOOGLE_CREDS_FILE.exists()
+        creds_ok = config.google_creds_available()
         if storage_choice == "☁️ Google Drive":
             if creds_ok:
-                st.success("✅ service_account.json found", icon="🔑")
+                if config.GOOGLE_CREDS_FILE.exists():
+                    st.success("✅ service_account.json found", icon="🔑")
+                else:
+                    st.success("✅ Credentials via Streamlit Secrets", icon="🔑")
                 # Show spreadsheet link if available
                 try:
                     _gs = GSheetDataStore()

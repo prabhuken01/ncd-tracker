@@ -38,6 +38,17 @@ SHEET_CLOSED = "Closed NCD Deal"
 GOOGLE_SHEET_NAME = "Issuance Tracker"
 GOOGLE_CREDS_FILE = BASE_DIR / "service_account.json"
 
+
+def google_creds_available() -> bool:
+    """Return True if Google credentials are available — local file OR Streamlit Secrets."""
+    if GOOGLE_CREDS_FILE.exists():
+        return True
+    try:
+        import streamlit as st
+        return hasattr(st, 'secrets') and 'gcp_service_account' in st.secrets
+    except Exception:
+        return False
+
 # ===== APPLICATION SETTINGS =====
 APP_TITLE = "Issuance Tracker"
 APP_SUBTITLE = "Structured Product Solutions — Issuer Readiness"

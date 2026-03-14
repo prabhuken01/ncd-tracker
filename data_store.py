@@ -400,6 +400,35 @@ class GSheetDataStore(DataStore):
         self._setup_gsheets()
 
     # ── setup ──────────────────────────────────────
+    def _get_gspread_client(self):
+        """
+        Obtain an authorised gspread client.
+        Priority:
+          1. Local service_account.json file  (local dev or file uploaded to server)
+          2. st.secrets['gcp_service_account'] (Streamlit Cloud Secrets)
+        Raises FileNotFoundError if neither source is available.
+        """
+        import gspread
+
+        # 1. Local file — works for local dev and for cloud if file is present
+        if config.GOOGLE_CREDS_FILE.exists():
+            return gspread.service_account(filename=str(config.GOOGLE_CREDS_FILE))
+
+        # 2. Streamlit Secrets — for Streamlit Cloud deployment
+        try:
+            import streamlit as st
+            if hasattr(st, 'secrets') and 'gcp_service_account' in st.secrets:
+                creds_dict = {k: v for k, v in st.secrets['gcp_service_account'].items()}
+                return gspread.service_account_from_dict(creds_dict)
+        except Exception:
+            pass
+
+        raise FileNotFoundError(
+            "No Google credentials found. Either:\n"
+            "  • Place service_account.json in the Code_Streamlit/ folder, OR\n"
+            "  • Add [gcp_service_account] to Streamlit Cloud → Settings → Secrets"
+        )
+
     def _setup_gsheets(self):
         try:
             import gspread  # noqa: F401
@@ -409,14 +438,7 @@ class GSheetDataStore(DataStore):
                 "  pip install gspread google-auth"
             )
 
-        if not config.GOOGLE_CREDS_FILE.exists():
-            raise FileNotFoundError(
-                f"service_account.json not found at:\n  {config.GOOGLE_CREDS_FILE}\n"
-                "Place the Google service-account JSON file there and try again."
-            )
-
-        import gspread
-        self.gc = gspread.service_account(filename=str(config.GOOGLE_CREDS_FILE))
+        self.gc = self._get_gspread_client()
         self.ss = self._open_or_create_spreadsheet()
 
     def _open_or_create_spreadsheet(self):
@@ -596,13 +618,15 @@ def get_data_store():
         mode = '📁 Local Folder'
 
     if 'Google' in mode:
-        if not config.GOOGLE_CREDS_FILE.exists():
+        if not config.google_creds_available():
             try:
                 import streamlit as st
                 st.warning(
-                    "⚠️ Google Drive mode selected but `service_account.json` "
-                    "not found. Using local Excel. Place the file in "
-                    f"`{config.GOOGLE_CREDS_FILE.parent}` to enable Google Sheets."
+                    "⚠️ Google Drive mode selected but no credentials found. "
+                    "Using local Excel.\n\n"
+                    "**To enable Google Sheets:** place `service_account.json` in the "
+                    "Code_Streamlit/ folder, or add `[gcp_service_account]` to "
+                    "Streamlit Cloud → Settings → Secrets."
                 )
             except Exception:
                 pass
