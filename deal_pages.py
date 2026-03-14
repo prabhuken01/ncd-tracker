@@ -117,38 +117,58 @@ def render_new_deal_form():
                 if ds.company_exists(company_name):
                     st.error(config.ERROR_DUPLICATE_ENTRY)
                 else:
-                    try:
-                        checklists = ds.initialize_checklist_for_deal(instrument_type)
-                        new_deal   = PipelineDeal(
-                            company_name    = company_name,
-                            instrument_type = instrument_type,
-                            issuer_type     = issuer_type,
-                            asset_class     = asset_class,
-                            issuance_size   = issuance_size,
-                            funding_date    = funding_date,
-                            rating          = rating,
-                            security        = security,
-                            checklists      = checklists,
-                            created_date    = date.today(),
-                            status          = "In Progress",
+                    # ── same-month issuance check ──────────────────────────
+                    # First submit shows a warning; second submit proceeds.
+                    existing   = ds.load_pipeline_deals()
+                    same_month = [
+                        d for d in existing
+                        if d.funding_date.year  == funding_date.year
+                        and d.funding_date.month == funding_date.month
+                    ]
+                    warn_key = 'same_month_warn'
+                    if same_month and st.session_state.get(warn_key) != company_name:
+                        names = ", ".join(f"**{d.company_name}**" for d in same_month)
+                        st.warning(
+                            f"⚠️ {names} already has a tentative issuance in "
+                            f"**{funding_date.strftime('%B %Y')}**. "
+                            f"Is this a repeat issuance or a separate deal? "
+                            f"Click **Create Deal** again to confirm and proceed."
                         )
-                        new_deal.update_checklist_progress()
-                        ds.save_pipeline_deal(new_deal)
-
-                        # Create company folder
+                        st.session_state[warn_key] = company_name
+                    else:
+                        # No same-month conflict, or user confirmed → create the deal
+                        st.session_state.pop(warn_key, None)
                         try:
-                            create_company_folder(company_name, config.ISSUANCE_FOLDER)
-                        except Exception:
-                            pass
+                            checklists = ds.initialize_checklist_for_deal(instrument_type)
+                            new_deal   = PipelineDeal(
+                                company_name    = company_name,
+                                instrument_type = instrument_type,
+                                issuer_type     = issuer_type,
+                                asset_class     = asset_class,
+                                issuance_size   = issuance_size,
+                                funding_date    = funding_date,
+                                rating          = rating,
+                                security        = security,
+                                checklists      = checklists,
+                                created_date    = date.today(),
+                                status          = "In Progress",
+                            )
+                            new_deal.update_checklist_progress()
+                            ds.save_pipeline_deal(new_deal)
 
-                        st.success(config.SUCCESS_DEAL_CREATED)
-                        st.balloons()
-                        st.session_state['selected_deal'] = company_name
-                        st.session_state['page']          = 'deal_detail'
-                        st.rerun()
+                            try:
+                                create_company_folder(company_name, config.ISSUANCE_FOLDER)
+                            except Exception:
+                                pass
 
-                    except Exception as e:
-                        st.error(f"❌ Error creating deal: {e}")
+                            st.success(config.SUCCESS_DEAL_CREATED)
+                            st.balloons()
+                            st.session_state['selected_deal'] = company_name
+                            st.session_state['page']          = 'deal_detail'
+                            st.rerun()
+
+                        except Exception as e:
+                            st.error(f"❌ Error creating deal: {e}")
 
 
 def render_info_panel():
@@ -252,7 +272,7 @@ def render_deal_detail():
 
     # ── actions ───────────────────────────────────
     st.markdown("---")
-    ca, cb, cc = st.columns(3)
+    ca, cb, cc, cd = st.columns(4)
 
     with ca:
         if deal.is_fully_funded():
@@ -261,13 +281,29 @@ def render_deal_detail():
                 st.rerun()
         else:
             pct = deal.get_overall_completion_percentage()
-            st.button(f"⏳ {pct}% — complete all steps to close", disabled=True, use_container_width=True)
+            st.button(f"⏳ {pct}% complete", disabled=True, use_container_width=True)
 
     with cb:
+        # Master "mark all complete" — ticks every phase and opens closure form
+        if not deal.is_fully_funded():
+            if st.button("⚡ Mark All + Close", use_container_width=True, type="primary",
+                         help="Marks ALL checklist items complete and opens the closure form"):
+                for cl in deal.checklists.values():
+                    for item in cl.items:
+                        item.completed = True
+                        item.status    = "Completed"
+                deal.update_checklist_progress()
+                ds.update_pipeline_deal(deal.company_name, deal)
+                st.session_state['show_closure_form'] = True
+                st.rerun()
+        else:
+            st.button("✅ Fully Complete", disabled=True, use_container_width=True)
+
+    with cc:
         if st.button("📄 Draft Term Sheet", use_container_width=True):
             _generate_pipeline_term_sheet(deal)
 
-    with cc:
+    with cd:
         if st.button("🗑️ Delete Deal", use_container_width=True):
             if st.session_state.get('confirm_delete') == deal.company_name:
                 ds.delete_pipeline_deal(company_name)
@@ -311,11 +347,30 @@ def _render_phase_checklist(deal, phase, ds):
     total     = cl.get_total_count()
     pct       = cl.get_completion_percentage()
 
-    pr_col, st_col = st.columns([4, 1])
+    pr_col, pct_col = st.columns([4, 1])
     with pr_col:
         st.progress(pct / 100)
-    with st_col:
+    with pct_col:
         st.markdown(f"**{completed}/{total} — {pct}%**")
+
+    # ── "Mark all complete" button ───────────────
+    all_done = (completed == total and total > 0)
+    btn_col, _ = st.columns([2, 5])
+    with btn_col:
+        if all_done:
+            st.success("✅ All items complete", icon="✅")
+        else:
+            if st.button(
+                "☑ Mark all complete",
+                key=f"mark_all_{deal.company_name}_{phase}",
+                use_container_width=True,
+            ):
+                for item in cl.items:
+                    item.completed = True
+                    item.status    = "Completed"
+                deal.update_checklist_progress()
+                ds.update_pipeline_deal(deal.company_name, deal)
+                st.rerun()
 
     st.markdown("")
 
@@ -363,8 +418,15 @@ def _render_checklist_item(deal, phase, item, ds):
                 label_visibility="collapsed",
             )
             if new_status != item.status:
-                item.status = new_status
-                ds.update_pipeline_deal(deal.company_name, deal)
+                item.status    = new_status
+                # Keep the completed boolean in sync with the status dropdown
+                item.completed = (new_status == "Completed")
+                deal.update_checklist_progress()
+                try:
+                    ds.update_pipeline_deal(deal.company_name, deal)
+                except Exception as e:
+                    st.error(f"Save failed: {e}")
+                st.rerun()
 
         if item.sub_notes or st.session_state.get(f"edit_{deal.company_name}_{phase}_{item.step_number}"):
             with st.expander("📝 Notes"):

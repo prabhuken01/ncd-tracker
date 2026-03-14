@@ -33,17 +33,29 @@ st.markdown("""
 <style>
     /* ══════════════════════════════════════════
        1. GLOBAL LIGHT BACKGROUND
+       Covers all Streamlit layout containers across
+       different Streamlit versions.
     ══════════════════════════════════════════ */
+    html, body {
+        background-color: #f8fafc !important;
+        color-scheme: light !important;
+    }
     .stApp,
+    [data-testid="stApp"],
     [data-testid="stAppViewContainer"],
     [data-testid="stMainBlockContainer"],
     [data-testid="stMain"],
-    section.main > div {
+    [data-testid="block-container"],
+    [data-testid="stBottom"],
+    [data-testid="stHeader"],
+    [data-testid="stDecoration"],
+    [data-testid="stToolbar"],
+    section.main,
+    section.main > div,
+    .main .block-container {
         background-color: #f8fafc !important;
         color: #1e293b !important;
     }
-
-    html, body { color-scheme: light !important; }
 
     /* ══════════════════════════════════════════
        2. SIDEBAR — white with light border
@@ -336,44 +348,52 @@ def render_sidebar():
                     st.success("✅ service_account.json found", icon="🔑")
                 else:
                     st.success("✅ Credentials via Streamlit Secrets", icon="🔑")
-                # Show spreadsheet link if available
+                # Try to show spreadsheet link
                 try:
                     _gs = GSheetDataStore()
-                    st.markdown(
-                        f"[📊 Open Google Sheet]({_gs.spreadsheet_url})",
-                        unsafe_allow_html=False,
-                    )
+                    st.markdown(f"[📊 Open Google Sheet]({_gs.spreadsheet_url})")
+                    st.caption("Google Sheets is active ✅")
+                except RuntimeError:
+                    # Sheet not yet created/shared — show concise next-step tip
+                    with st.expander("📋 One-time sheet setup needed", expanded=True):
+                        try:
+                            import gspread
+                            _gc = GSheetDataStore.__new__(GSheetDataStore)
+                            _gc.file_path = config.DATA_FILE
+                            _gc.gc = GSheetDataStore._get_gspread_client(_gc)
+                            sa_email = _gc.gc.auth.service_account_email
+                        except Exception:
+                            sa_email = "your-service-account@project.iam.gserviceaccount.com"
+                        st.markdown(f"""
+**Create the Google Sheet (1 minute):**
+
+1. Open [drive.google.com](https://drive.google.com)
+2. **New → Google Sheets** → rename to: `Issuance Tracker`
+3. **Share** with Editor access:
+   `{sa_email}`
+4. Refresh this app ✅
+""")
                 except Exception as _e:
-                    st.warning(f"Sheet not yet accessible: {_e}")
+                    st.warning(f"Connection issue: {_e}")
             else:
-                st.warning("⚠️ `service_account.json` not found in Code_Streamlit/")
+                st.warning("⚠️ No credentials found.")
                 with st.expander("📋 Setup Instructions"):
                     st.markdown("""
-**Steps to enable Google Sheets:**
+**To enable Google Sheets:**
 
-1. **Create service account** (Google Cloud → IAM → Service Accounts)
-   - Name/ID: `ncd-tracker`
-   - Role: **Editor**
-
-2. **Download JSON key**
-   - Click the service account → **Keys** tab
-   - Add Key → Create new key → **JSON**
-   - Rename downloaded file to `service_account.json`
-   - Place in `Code_Streamlit/` folder
-
-3. **Enable APIs** (APIs & Services → Library)
-   - Google Sheets API ✅
-   - Google Drive API ✅
-
-4. **Share your Google Sheet** *(auto-created on first run)*
-   - Open the sheet → Share → add service account email
-   - Give **Editor** access
-
-5. **Streamlit Cloud** → Settings → Secrets → add:
-   ```
+1. **Google Cloud** → IAM → Service Accounts → create one
+2. **Keys tab** → Add Key → JSON → rename to `service_account.json`
+3. **Enable APIs:** Google Sheets API + Google Drive API
+4. **Streamlit Cloud** → Settings → Secrets:
+   ```toml
    [gcp_service_account]
-   # paste contents of service_account.json here
+   type = "service_account"
+   project_id = "..."
+   private_key = "..."
+   client_email = "..."
+   ...
    ```
+5. Create a Google Sheet named **`Issuance Tracker`** and share it with the service account email
 """)
 
         st.markdown("---")
