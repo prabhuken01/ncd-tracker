@@ -31,106 +31,228 @@ st.set_page_config(
 # ===== FORCE LIGHT THEME CSS =====
 st.markdown("""
 <style>
-    /* ── Force light background everywhere ── */
+    /* ══════════════════════════════════════════
+       1. GLOBAL LIGHT BACKGROUND
+    ══════════════════════════════════════════ */
     .stApp,
     [data-testid="stAppViewContainer"],
     [data-testid="stMainBlockContainer"],
-    [data-testid="stMain"] {
+    [data-testid="stMain"],
+    section.main > div {
         background-color: #f8fafc !important;
         color: #1e293b !important;
     }
 
-    /* ── Sidebar ── */
+    html, body { color-scheme: light !important; }
+
+    /* ══════════════════════════════════════════
+       2. SIDEBAR — white with light border
+    ══════════════════════════════════════════ */
     [data-testid="stSidebar"],
     [data-testid="stSidebarContent"] {
         background-color: #ffffff !important;
-        border-right: 1px solid #e2e8f0;
+        border-right: 1px solid #e2e8f0 !important;
     }
-
-    /* ── Override dark-mode defaults ── */
-    html, body {
-        color-scheme: light !important;
-    }
-
-    /* ── Headings & text ── */
-    h1, h2, h3, h4, h5, h6 {
+    /* All text in sidebar dark */
+    [data-testid="stSidebar"] * {
         color: #1e293b !important;
     }
+    /* Sidebar headings */
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {
+        color: #1e3a8a !important;
+    }
 
-    /* ── Main title ── */
+    /* ══════════════════════════════════════════
+       3. BUTTONS — primary blue, secondary light
+    ══════════════════════════════════════════ */
+    /* Secondary / default buttons */
+    [data-testid="baseButton-secondary"],
+    button[kind="secondary"] {
+        background-color: #f1f5f9 !important;
+        color: #374151 !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 6px !important;
+    }
+    [data-testid="baseButton-secondary"]:hover,
+    button[kind="secondary"]:hover {
+        background-color: #e2e8f0 !important;
+        color: #111827 !important;
+        border-color: #9ca3af !important;
+    }
+
+    /* Primary buttons — keep blue */
+    [data-testid="baseButton-primary"],
+    button[kind="primary"] {
+        background-color: #1e3a8a !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 6px !important;
+    }
+    [data-testid="baseButton-primary"]:hover,
+    button[kind="primary"]:hover {
+        background-color: #1e40af !important;
+    }
+
+    /* ══════════════════════════════════════════
+       4. PROGRESS BAR — light gray track, blue fill
+    ══════════════════════════════════════════ */
+    /* Track (outer wrapper) */
+    .stProgress > div {
+        background-color: #e2e8f0 !important;
+        border-radius: 100px !important;
+    }
+    /* Fill */
+    .stProgress > div > div {
+        background-color: #3b82f6 !important;
+        border-radius: 100px !important;
+    }
+    /* Alternate selectors for Streamlit versions */
+    [role="progressbar"] {
+        background-color: #e2e8f0 !important;
+        border-radius: 100px !important;
+    }
+    [role="progressbar"] > div {
+        background-color: #3b82f6 !important;
+        border-radius: 100px !important;
+    }
+
+    /* ══════════════════════════════════════════
+       5. METRICS — dark text on white bg
+    ══════════════════════════════════════════ */
+    [data-testid="stMetric"] {
+        background-color: transparent !important;
+    }
+    [data-testid="stMetricValue"] {
+        color: #1e293b !important;
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #475569 !important;
+    }
+
+    /* ══════════════════════════════════════════
+       6. TEXT ELEMENTS — always dark on light bg
+    ══════════════════════════════════════════ */
+    h1, h2, h3, h4, h5, h6 { color: #1e293b !important; }
+    p, li, span, label      { color: #1e293b !important; }
+    .stMarkdown, .stText    { color: #1e293b !important; }
+    [data-testid="stCaption"]       { color: #64748b !important; }
+    [data-testid="stCaptionContainer"] { color: #64748b !important; }
+
+    /* ══════════════════════════════════════════
+       7. TABS — clean white active, light gray bar
+    ══════════════════════════════════════════ */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #f1f5f9 !important;
+        border-radius: 8px;
+        padding: 4px;
+        gap: 4px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: transparent !important;
+        color: #475569 !important;
+        border-radius: 6px;
+        padding: 8px 14px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #e2e8f0 !important;
+        color: #1e293b !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #ffffff !important;
+        color: #1e3a8a !important;
+        font-weight: 700;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    /* ══════════════════════════════════════════
+       8. INPUT WIDGETS — white bg, dark text
+    ══════════════════════════════════════════ */
+    .stSelectbox [data-baseweb="select"] > div,
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input,
+    .stTextArea > div > div > textarea {
+        background-color: #ffffff !important;
+        color: #1e293b !important;
+        border-color: #d1d5db !important;
+    }
+
+    /* ══════════════════════════════════════════
+       9. CONTAINERS / CARDS
+    ══════════════════════════════════════════ */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 10px !important;
+    }
+
+    /* ══════════════════════════════════════════
+       10. EXPANDER / ALERT BOXES
+    ══════════════════════════════════════════ */
+    [data-testid="stExpander"] {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stExpander"] summary {
+        color: #1e293b !important;
+    }
+    /* Info / success / warning alerts — keep colorful but light */
+    [data-testid="stAlert"] {
+        border-radius: 8px;
+    }
+
+    /* ══════════════════════════════════════════
+       11. RADIO BUTTONS — readable labels
+    ══════════════════════════════════════════ */
+    [data-testid="stRadio"] label {
+        color: #374151 !important;
+        font-size: 0.9rem;
+    }
+    [data-testid="stRadio"] > div {
+        gap: 4px;
+    }
+
+    /* ══════════════════════════════════════════
+       12. DATAFRAME / TABLE
+    ══════════════════════════════════════════ */
+    [data-testid="stDataFrame"] {
+        background-color: #ffffff !important;
+        border-radius: 8px;
+    }
+
+    /* ══════════════════════════════════════════
+       13. HIDE STREAMLIT BRANDING
+    ══════════════════════════════════════════ */
+    #MainMenu  { visibility: hidden; }
+    footer     { visibility: hidden; }
+
+    /* ══════════════════════════════════════════
+       14. CUSTOM CLASSES
+    ══════════════════════════════════════════ */
     .main-title {
         font-size: 1.6rem;
         font-weight: 700;
         color: #1e3a8a;
         margin-bottom: 0;
     }
-
     .subtitle {
         font-size: 0.85rem;
         color: #64748b;
         margin-bottom: 0.5rem;
     }
-
-    /* ── Cards ── */
-    .deal-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 1rem;
-        background: #ffffff;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        margin-bottom: 1rem;
-    }
-
-    /* ── Buttons ── */
-    .stButton > button {
-        border-radius: 6px;
-        font-weight: 500;
-    }
-
-    /* ── Metric values ── */
-    [data-testid="stMetricValue"] {
-        font-size: 1.8rem;
-        font-weight: 600;
-        color: #1e293b !important;
-    }
-
-    /* ── Progress bar colour ── */
-    .stProgress > div > div > div > div {
-        background-color: #3b82f6;
-    }
-
-    /* ── Tabs ── */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #f1f5f9;
-        border-radius: 8px;
-        padding: 4px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        padding: 8px 18px;
-        border-radius: 6px;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #ffffff;
-    }
-
-    /* ── Hide Streamlit branding ── */
-    #MainMenu  { visibility: hidden; }
-    footer     { visibility: hidden; }
-
-    /* ── Info / alert boxes ── */
     .info-box {
         padding: 1rem;
         background-color: #eff6ff;
         border-left: 4px solid #3b82f6;
         border-radius: 4px;
         margin: 1rem 0;
-    }
-
-    /* ── Containers (native border=True) ── */
-    [data-testid="stVerticalBlockBorderWrapper"] {
-        background-color: #ffffff !important;
-        border-radius: 10px !important;
+        color: #1e3a8a !important;
     }
 </style>
 """, unsafe_allow_html=True)

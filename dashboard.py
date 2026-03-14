@@ -83,14 +83,23 @@ def _render_summary_stats(stats):
 
 
 def _metric_box(col, value, label, color, icon):
+    """Compact metric tile — white background, coloured accent border + value text."""
     with col:
         st.markdown(
             f"""<div style="
-                background:{color}15; border:1px solid {color}50;
-                border-radius:8px; padding:14px 18px; text-align:center;
-                min-height:80px;">
-                <div style="font-size:1.9rem; font-weight:700; color:{color};">{icon} {value}</div>
-                <div style="font-size:0.82rem; color:#475569; margin-top:4px;">{label}</div>
+                background:#ffffff;
+                border:1px solid #e2e8f0;
+                border-top:3px solid {color};
+                border-radius:8px;
+                padding:14px 18px;
+                text-align:center;
+                min-height:82px;">
+                <div style="font-size:1.75rem; font-weight:700; color:{color}; line-height:1.1;">
+                    {icon} {value}
+                </div>
+                <div style="font-size:0.80rem; color:#475569; margin-top:5px; font-weight:500;">
+                    {label}
+                </div>
             </div>""",
             unsafe_allow_html=True,
         )
@@ -141,10 +150,15 @@ def _render_deal_card(deal):
             with phase_cols[idx]:
                 if phase in deal.checklists:
                     cl = deal.checklists[phase]
+                    done = cl.get_completed_count()
+                    total_items = cl.get_total_count()
+                    icon_color = "#15803d" if done == total_items else "#475569"
                     st.markdown(
-                        f"<div style='text-align:center; font-size:0.72rem; color:#64748b;'>"
+                        f"<div style='text-align:center; font-size:0.72rem; "
+                        f"color:{icon_color}; background:#f8fafc; "
+                        f"border:1px solid #e2e8f0; border-radius:6px; padding:4px 2px;'>"
                         f"{config.PHASE_ICONS.get(phase, '📋')}<br>"
-                        f"<b>{cl.get_completed_count()}/{cl.get_total_count()}</b></div>",
+                        f"<b style='color:{icon_color};'>{done}/{total_items}</b></div>",
                         unsafe_allow_html=True,
                     )
 

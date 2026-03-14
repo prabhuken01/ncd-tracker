@@ -224,8 +224,18 @@ def render_deal_detail():
     st.markdown("---")
 
     # ── phase tabs ────────────────────────────────
-    tab_names = [f"{config.PHASE_ICONS[p]} {p} {_phase_badge(deal, p)}"
-                 for p in config.PHASE_NAMES]
+    # Use safe short labels (avoid '&' which causes Streamlit tab truncation)
+    _PHASE_TAB = {
+        "Pre-Exec":     "📋 Pre-Exec",
+        "Depo & Stamp": "🏦 Depo+Stamp",
+        "Docs & EBP":   "📝 Docs+EBP",
+        "T-Day":        "💰 T-Day",
+        "Post":         "📤 Post",
+    }
+    tab_names = [
+        f"{_PHASE_TAB.get(p, p)} {_phase_badge(deal, p)}".strip()
+        for p in config.PHASE_NAMES
+    ]
     tabs = st.tabs(tab_names)
 
     for idx, phase in enumerate(config.PHASE_NAMES):
