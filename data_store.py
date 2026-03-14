@@ -612,9 +612,21 @@ class GSheetDataStore(DataStore):
 #  FACTORY
 # ══════════════════════════════════════════════════════════
 
+# Session-state key used to cache the GSheetDataStore instance.
+# Shared between data_store.py and app.py so both use the same cache slot.
+_GSHEET_CACHE_KEY = '_gsheet_store'
+
+
 def get_data_store():
     """
     Return the right DataStore based on the storage_mode session flag.
+
+    When Google Sheets mode is active the GSheetDataStore is cached in
+    st.session_state[_GSHEET_CACHE_KEY] so that gc.open() (a counted Read
+    API call) is only executed ONCE per browser session, not on every
+    Streamlit rerun.  This prevents the 429 "Quota exceeded" errors that
+    occur when the app rerenders rapidly (widget interactions, st.rerun()).
+
     Falls back to local Excel if Google Sheets fails or creds are missing.
     """
     try:
@@ -637,8 +649,25 @@ def get_data_store():
             except Exception:
                 pass
             return DataStore()
+
+        # ── Return cached instance if available ─────────────────────────────
         try:
-            return GSheetDataStore()
+            import streamlit as st
+            cached = st.session_state.get(_GSHEET_CACHE_KEY)
+            if cached is not None:
+                return cached
+        except Exception:
+            pass
+
+        # ── First call in this session: create and cache ─────────────────────
+        try:
+            store = GSheetDataStore()
+            try:
+                import streamlit as st
+                st.session_state[_GSHEET_CACHE_KEY] = store
+            except Exception:
+                pass
+            return store
         except RuntimeError as e:
             # RuntimeError = one-time setup needed (sheet not found / not shared)
             # Show as amber warning with actionable steps, not a red crash box
@@ -652,7 +681,16 @@ def get_data_store():
         except Exception as e:
             try:
                 import streamlit as st
-                st.error(f"Google Sheets connection failed: {e}\nFalling back to local Excel.")
+                err_str = str(e)
+                if '429' in err_str:
+                    st.warning(
+                        "⚠️ Google Sheets rate limit hit (429 — too many read requests).  "
+                        "Wait ~30 seconds then refresh the page."
+                    )
+                else:
+                    st.error(f"Google Sheets connection failed: {e}\nFalling back to local Excel.")
+                # Clear bad cache entry so next reload retries cleanly
+                st.session_state.pop(_GSHEET_CACHE_KEY, None)
             except Exception:
                 print(f"[get_data_store] Google Sheets failed: {e}. Using local Excel.")
             return DataStore()

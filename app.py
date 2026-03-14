@@ -16,7 +16,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 import config
-from data_store import DataStore, GSheetDataStore, get_data_store
+from data_store import DataStore, GSheetDataStore, get_data_store, _GSHEET_CACHE_KEY
 from dashboard import render_dashboard, render_future_scope
 from deal_pages import render_new_deal_form, render_info_panel, render_deal_detail, render_closed_deals
 
@@ -65,9 +65,22 @@ st.markdown("""
         background-color: #ffffff !important;
         border-right: 1px solid #e2e8f0 !important;
     }
-    /* All NON-BUTTON text in sidebar dark — excludes primary button children */
-    [data-testid="stSidebar"] *:not([data-testid="baseButton-primary"]):not([data-testid="baseButton-primary"] *) {
+    /* Step A: ALL sidebar elements get dark text (specificity [0,1,0]) */
+    [data-testid="stSidebar"] * {
         color: #1e293b !important;
+    }
+    /* Step B: Primary nav buttons override with higher specificity [0,2,0] > [0,1,0]
+       Two attribute selectors beat one — this is the definitive fix for white-on-blue */
+    [data-testid="stSidebar"] [data-testid="baseButton-primary"],
+    [data-testid="stSidebar"] button[kind="primary"] {
+        background-color: #1e3a8a !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    [data-testid="stSidebar"] [data-testid="baseButton-primary"] *,
+    [data-testid="stSidebar"] button[kind="primary"] * {
+        color: #ffffff !important;
+        background-color: transparent !important;
     }
     /* Sidebar headings */
     [data-testid="stSidebar"] h1,
@@ -364,16 +377,18 @@ def render_sidebar():
                     st.success("✅ service_account.json found", icon="🔑")
                 else:
                     st.success("✅ Credentials via Streamlit Secrets", icon="🔑")
-                # Try to show spreadsheet link
+                # Try to show spreadsheet link — reuse cached store to avoid extra API calls
                 try:
-                    _gs = GSheetDataStore()
+                    _gs = st.session_state.get(_GSHEET_CACHE_KEY)
+                    if _gs is None:
+                        _gs = GSheetDataStore()
+                        st.session_state[_GSHEET_CACHE_KEY] = _gs
                     st.markdown(f"[📊 Open Google Sheet]({_gs.spreadsheet_url})")
                     st.caption("Google Sheets is active ✅")
                 except RuntimeError:
                     # Sheet not yet created/shared — show concise next-step tip
                     with st.expander("📋 One-time sheet setup needed", expanded=True):
                         try:
-                            import gspread
                             _gc = GSheetDataStore.__new__(GSheetDataStore)
                             _gc.file_path = config.DATA_FILE
                             _gc.gc = GSheetDataStore._get_gspread_client(_gc)
