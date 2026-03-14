@@ -107,13 +107,16 @@ def _metric_box(col, value, label, color, icon):
 
 def _render_deal_card(deal):
     """Compact deal card using st.container — avoids raw-HTML rendering issues."""
-    t_color  = config.T_COUNTDOWN_COLORS[deal.get_t_countdown_color()]
+    t_key    = deal.get_t_countdown_color()
+    t_bg     = config.T_COUNTDOWN_COLORS[t_key]
+    t_text   = config.T_COUNTDOWN_TEXT[t_key]
     t_label  = format_t_countdown(deal.funding_date)
     t_date   = format_date(deal.funding_date)
     pct      = deal.get_overall_completion_percentage()
 
+    # Light-background badges — dark text always readable, no white-on-dark issues
     is_listed = "listed" in deal.instrument_type.lower() and "unlisted" not in deal.instrument_type.lower()
-    badge_bg  = "#166534" if is_listed else "#374151"
+    badge_bg, badge_text = ("#d1fae5", "#065f46") if is_listed else ("#f1f5f9", "#374151")
 
     with st.container(border=True):
         # Row 1: company name  |  T-date
@@ -125,14 +128,14 @@ def _render_deal_card(deal):
 
         # Row 2: instrument badge + amount + countdown chip
         st.markdown(
-            f'<span style="background:{badge_bg}; color:#fff; font-size:0.72rem; '
-            f'padding:2px 8px; border-radius:4px; white-space:nowrap;">'
+            f'<span style="background:{badge_bg}; color:{badge_text}; font-size:0.72rem; '
+            f'font-weight:600; padding:2px 8px; border-radius:4px; white-space:nowrap;">'
             f'{deal.instrument_type}</span>'
             f'&nbsp;&nbsp;'
-            f'<span style="color:#475569; font-size:0.9rem; font-weight:600;">'
-            f'₹{deal.issuance_size:,.0f} Cr</span>'
+            f'<span style="color:#374151; font-size:0.9rem; font-weight:600;">'
+            f'&#8377;{deal.issuance_size:,.0f} Cr</span>'
             f'&nbsp;&nbsp;'
-            f'<span style="background:{t_color}; color:#fff; font-size:0.78rem; '
+            f'<span style="background:{t_bg}; color:{t_text}; font-size:0.78rem; '
             f'font-weight:700; padding:2px 10px; border-radius:12px;">'
             f'{t_label}</span>',
             unsafe_allow_html=True,

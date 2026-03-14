@@ -192,15 +192,19 @@ def render_deal_detail():
     # ── header ────────────────────────────────────
     st.markdown(f"# {deal.company_name}")
 
-    t_color = config.T_COUNTDOWN_COLORS[deal.get_t_countdown_color()]
-    badge_bg = "#166534" if "unlisted" not in deal.instrument_type.lower() else "#374151"
+    t_key    = deal.get_t_countdown_color()
+    t_bg     = config.T_COUNTDOWN_COLORS[t_key]
+    t_text   = config.T_COUNTDOWN_TEXT[t_key]
+    is_listed = "unlisted" not in deal.instrument_type.lower()
+    badge_bg, badge_text = ("#d1fae5", "#065f46") if is_listed else ("#f1f5f9", "#374151")
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(
-            f'<span style="background:{badge_bg}; color:#fff; padding:4px 12px; border-radius:4px;">'
+            f'<span style="background:{badge_bg}; color:{badge_text}; font-weight:600; '
+            f'padding:4px 12px; border-radius:4px;">'
             f'{deal.instrument_type}</span><br>'
-            f'<b>₹{deal.issuance_size:,.0f} Cr</b>',
+            f'<b style="color:#1e293b;">&#8377;{deal.issuance_size:,.0f} Cr</b>',
             unsafe_allow_html=True,
         )
     with c2:
@@ -210,7 +214,7 @@ def render_deal_detail():
         st.caption("**Funding Date (T)**")
         st.markdown(f"**{format_date(deal.funding_date)}**")
         st.markdown(
-            f'<div style="background:{t_color}; color:#fff; padding:4px 12px; '
+            f'<div style="background:{t_bg}; color:{t_text}; padding:4px 12px; '
             f'border-radius:12px; display:inline-block; font-weight:700;">'
             f'{format_t_countdown(deal.funding_date)}</div>',
             unsafe_allow_html=True,

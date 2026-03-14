@@ -82,11 +82,16 @@ SECURITY_TYPES = [
 # ===== STATUS OPTIONS =====
 STATUS_OPTIONS = ["Pending", "In Progress", "Completed", "Blocked"]
 
-# ===== T-DAY COUNTDOWN COLORS =====
+# ===== T-DAY COUNTDOWN COLORS (light-bg scheme — dark text on tinted background) =====
 T_COUNTDOWN_COLORS = {
-    "critical": "#FF4444",   # Red - 7 days or less
-    "warning": "#FFA500",    # Orange - 8-14 days
-    "normal": "#4CAF50"      # Green - 15+ days
+    "critical": "#fee2e2",   # Light red bg   — 7 days or less
+    "warning":  "#fff3cd",   # Light amber bg — 8-14 days
+    "normal":   "#d1fae5",   # Light green bg — 15+ days
+}
+T_COUNTDOWN_TEXT = {
+    "critical": "#991b1b",   # Dark red text
+    "warning":  "#92400e",   # Dark amber text
+    "normal":   "#065f46",   # Dark green text
 }
 
 # ===== PHASE DEFINITIONS =====
